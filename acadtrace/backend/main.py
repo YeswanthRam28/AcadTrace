@@ -45,6 +45,42 @@ class LoginRequest(BaseModel):
     id_val: str # reg_no for student, username for admin
     password: str
 
+class AnnouncementCreate(BaseModel):
+    title: str
+    content: str
+    admin_id: int
+
+class InstructorCreate(BaseModel):
+    name: str
+    email: str
+    department_id: Optional[int]
+    bio: Optional[str]
+
+class ProfileUpdate(BaseModel):
+    phone: Optional[str]
+    address: Optional[str]
+    bio: Optional[str]
+
+class GradeUpdate(BaseModel):
+    registration_id: int
+    grade: str
+
+class ReviewCreate(BaseModel):
+    student_id: int
+    offering_id: int
+    rating: int
+    comment: Optional[str]
+
+class AttendanceCreate(BaseModel):
+    student_id: int
+    offering_id: int
+    status: str # present, absent, late
+
+class PaymentCreate(BaseModel):
+    student_id: int
+    amount: float
+    description: str
+
 
 # Auth Endpoints
 @app.post("/api/auth/login/student")
@@ -280,6 +316,159 @@ async def get_history(student_id: int):
         WHERE h.student_id = %s
         ORDER BY h.performed_at DESC
     """, (student_id,))
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+    return data
+
+# --- New Feature Endpoints ---
+
+# 1. Announcements
+@app.post("/api/admin/announcements")
+async def add_announcement(ann: AnnouncementCreate):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO announcements (title, content, created_by) VALUES (%s, %s, %s) RETURNING *", 
+                    (ann.title, ann.content, ann.admin_id))
+        conn.commit()
+        return cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/api/announcements")
+async def get_announcements():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT a.*, admin.name as author FROM announcements a JOIN admins admin ON a.created_by = admin.id ORDER BY created_at DESC")
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+    return data
+
+# 2. Instructors
+@app.post("/api/admin/instructors")
+async def add_instructor(inst: InstructorCreate):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO instructors (name, email, department_id, bio) VALUES (%s, %s, %s, %s) RETURNING *",
+                    (inst.name, inst.email, inst.department_id, inst.bio))
+        conn.commit()
+        return cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/api/admin/instructors")
+async def get_instructors():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT i.*, d.name as department_name FROM instructors i LEFT JOIN departments d ON i.department_id = d.id")
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+    return data
+
+# 3. Student Profile
+@app.get("/api/student/profile/{student_id}")
+async def get_profile(student_id: int):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, reg_no, name, email, phone, address, bio, profile_picture FROM students WHERE id = %s", (student_id,))
+    data = cur.fetchone()
+    cur.close()
+    conn.close()
+    return data
+
+@app.put("/api/student/profile/{student_id}")
+async def update_profile(student_id: int, prof: ProfileUpdate):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE students SET phone = %s, address = %s, bio = %s WHERE id = %s RETURNING *",
+                    (prof.phone, prof.address, prof.bio, student_id))
+        conn.commit()
+        return cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+# 4. Grading
+@app.post("/api/admin/grades")
+async def update_grade(g: GradeUpdate):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE registrations SET grade = %s WHERE id = %s RETURNING *", (g.grade, g.registration_id))
+        conn.commit()
+        return cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+# 5. Course Reviews
+@app.post("/api/student/reviews")
+async def add_review(rev: ReviewCreate):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO course_reviews (student_id, offering_id, rating, comment) VALUES (%s, %s, %s, %s) RETURNING *",
+                    (rev.student_id, rev.offering_id, rev.rating, rev.comment))
+        conn.commit()
+        return cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+# 6. Timetable
+@app.get("/api/student/timetable/{student_id}")
+async def get_timetable(student_id: int):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT o.day_of_week, o.start_time, o.end_time, o.room_no, c.name as course_name, c.code as course_code
+        FROM registrations r
+        JOIN offerings o ON r.offering_id = o.id
+        JOIN courses c ON o.course_id = c.id
+        WHERE r.student_id = %s AND r.status = 'registered'
+    """, (student_id,))
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+    return data
+
+# 7. Notifications
+@app.get("/api/notifications/{user_id}/{role}")
+async def get_notifications(user_id: int, role: str):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM notifications WHERE user_id = %s AND user_role = %s ORDER BY created_at DESC LIMIT 10", (user_id, role))
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+    return data
+
+# 8. Payments
+@app.post("/api/student/payments")
+async def add_payment(p: PaymentCreate):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO payments (student_id, amount, description, status) VALUES (%s, %s, %s, 'paid') RETURNING *",
+                    (p.student_id, p.amount, p.description))
+        conn.commit()
+        return cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/api/student/payments/{student_id}")
+async def get_payments(student_id: int):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM payments WHERE student_id = %s ORDER BY created_at DESC", (student_id,))
     data = cur.fetchall()
     cur.close()
     conn.close()
