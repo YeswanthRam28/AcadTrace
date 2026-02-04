@@ -4,17 +4,19 @@ AcadTrace is a premium Student Information System built with **FastAPI** (Backen
 
 ## 🏗️ Project Structure
 ```text
-d:\Projects\dbms\
-├── schema.sql             # DB Tables & Relations
+AcadTrace/
+├── schema.sql             # Core DB Tables & Relations
 ├── triggers.sql           # SQL Triggers for seat management & auditing
 ├── seed.sql               # Initial testing data (Admins/Students)
-└── acadtrace\             # Main Web Application
-    ├── backend\           # FastAPI Python Backend
-    │   ├── main.py        # API Endpoints & Auth Logic
+├── features.sql           # Extended features schema (Instructors, Grades, etc.)
+├── migrate.py             # Database migration utility
+└── acadtrace/             # Main Web Application
+    ├── backend/           # FastAPI Python Backend
+    │   ├── main.py        # API Endpoints & Extended Logic
     │   ├── db.py          # DB Connection Pool
-    │   └── .env           # DB Credentials (Update this!)
-    └── frontend\          # React + Vite Frontend
-        ├── src\           # React Components & Logic
+    │   └── .env           # DB Credentials
+    └── frontend/          # React + Vite Frontend
+        ├── src/           # Components & Visual Effects (LightRays)
         └── index.html     # Entry point
 ```
 
@@ -26,20 +28,19 @@ d:\Projects\dbms\
    - `schema.sql` (Tables)
    - `triggers.sql` (Business Logic)
    - `seed.sql` (Test data)
+3. Run migrations for extended features:
+   ```bash
+   python migrate.py
+   ```
 
 ### 2. Backend Setup (FastAPI)
 1. Navigate to `acadtrace/backend`.
-2. (Optional) Create a virtual environment:
+2. Install dependencies:
    ```bash
-   python -m venv venv
-   .\venv\Scripts\activate
+   pip install fastapi uvicorn psycopg2-binary python-dotenv
    ```
-3. Install dependencies:
-   ```bash
-   pip install fastapi uvicorn psycopg2-binary python-dotenv cors
-   ```
-4. Update `backend/.env` with your PostgreSQL `DB_PASSWORD`.
-5. Start the server:
+3. Update `backend/.env` with your PostgreSQL `DB_PASSWORD`.
+4. Start the server:
    ```bash
    python main.py
    ```
@@ -60,7 +61,22 @@ d:\Projects\dbms\
 - **Student**: Reg No: `2024CS01` | Password: `pass123`
 
 ## 💎 Features
-- **Atomic Registration**: Database-level seat management prevents over-registration.
-- **Audit Trails**: Every registration/drop action is logged with timestamps.
-- **Modern UI**: Dark-mode glassmorphism with Framer Motion animations.
-- **Secure Auth**: Role-based login for Admins and Students.
+
+### 🎓 Student Ecosystem
+- **GPA Calculator**: Real-time CGPA tracking based on academic performance.
+- **Dynamic Timetable**: Automated schedule generation with room and instructor details.
+- **Enrollment Engine**: One-click registration with real-time seat availability checks.
+- **Profile Hub**: Comprehensive student profile management (Bio, Contact, History).
+- **Payment Portal**: Secure tracking of tuition fees and payment history.
+
+### 👨‍💼 Administrative Suite
+- **Instructor Management**: Dedicated portals to manage faculty and course assignments.
+- **Grading Portal**: Direct interface for bulk grade entry and performance tracking.
+- **Announcement System**: System-wide broadcast system for critical academic news.
+- **Atomic Operations**: Database-level triggers ensure registration integrity and audit logging.
+
+### ✨ Premium Experience
+- **Glassmorphism UI**: High-fidelity dark mode interface with 16px blur backdrops.
+- **LightRay Visuals**: Dynamic background light effects for a "Cyber-Genic" aesthetic.
+- **Modern UX**: Smooth Framer Motion animations and Toast-based real-time feedback.
+- **Full SEO**: Optimized semantic HTML and performance tuning.
