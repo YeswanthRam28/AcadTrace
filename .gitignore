@@ -57,3 +57,7 @@ Thumbs.db
 
 # Databases
 *.sqlite3
+
+# Agent
+.agent/
+agent_data/

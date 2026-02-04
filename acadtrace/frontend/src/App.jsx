@@ -5,10 +5,12 @@ import {
   LayoutDashboard, LogOut, Plus, Trash2, History,
   ChevronRight, Users, CheckCircle, AlertCircle,
   Bell, User, CreditCard, MessageSquare, Clock,
-  Star, Briefcase, FileText, PieChart, Search, Edit3
+  Star, Briefcase, FileText, PieChart, Search, Edit3,
+  Shield, Zap, Globe, ArrowRight, MousePointer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
+import LightRays from './LightRays';
 
 const API_BASE = 'http://localhost:8000/api';
 const api = axios.create({ baseURL: API_BASE });
@@ -16,10 +18,10 @@ const api = axios.create({ baseURL: API_BASE });
 // --- Shared UI Components ---
 
 const GlassCard = ({ icon, title, children, style }) => (
-  <motion.div 
+  <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="glass" 
+    className="glass"
     style={{ padding: '2rem', ...style }}
   >
     <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', fontSize: '1.25rem' }}>
@@ -31,9 +33,9 @@ const GlassCard = ({ icon, title, children, style }) => (
 );
 
 const StatCard = ({ icon, label, value, color = 'var(--primary)' }) => (
-  <motion.div 
-    whileHover={{ y: -5, scale: 1.02 }} 
-    className="glass stat-card" 
+  <motion.div
+    whileHover={{ y: -5, scale: 1.02 }}
+    className="glass stat-card"
     style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}
   >
     <div style={{ background: `${color}20`, padding: '1rem', borderRadius: '1rem', color }}>{icon}</div>
@@ -45,8 +47,8 @@ const StatCard = ({ icon, label, value, color = 'var(--primary)' }) => (
 );
 
 const TabButton = ({ active, onClick, icon, label }) => (
-  <button 
-    className={`btn ${active ? 'btn-primary' : 'btn-secondary'}`} 
+  <button
+    className={`btn ${active ? 'btn-primary' : 'btn-secondary'}`}
     onClick={onClick}
     style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
   >
@@ -107,11 +109,11 @@ const AdminDashboard = ({ adminId }) => {
   return (
     <div className="animate-fade-in">
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-        <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<LayoutDashboard size={18}/>} label="Overview" />
-        <TabButton active={activeTab === 'academic'} onClick={() => setActiveTab('academic')} icon={<BookOpen size={18}/>} label="Academic Setup" />
-        <TabButton active={activeTab === 'instructors'} onClick={() => setActiveTab('instructors')} icon={<Users size={18}/>} label="Instructors" />
-        <TabButton active={activeTab === 'announcements'} onClick={() => setActiveTab('announcements')} icon={<Bell size={18}/>} label="Announcements" />
-        <TabButton active={activeTab === 'grading'} onClick={() => setActiveTab('grading')} icon={<Edit3 size={18}/>} label="Grading" />
+        <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<LayoutDashboard size={18} />} label="Overview" />
+        <TabButton active={activeTab === 'academic'} onClick={() => setActiveTab('academic')} icon={<BookOpen size={18} />} label="Academic Setup" />
+        <TabButton active={activeTab === 'instructors'} onClick={() => setActiveTab('instructors')} icon={<Users size={18} />} label="Instructors" />
+        <TabButton active={activeTab === 'announcements'} onClick={() => setActiveTab('announcements')} icon={<Bell size={18} />} label="Announcements" />
+        <TabButton active={activeTab === 'grading'} onClick={() => setActiveTab('grading')} icon={<Edit3 size={18} />} label="Grading" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -123,7 +125,7 @@ const AdminDashboard = ({ adminId }) => {
               <StatCard icon={<Users />} label="Students" value={stats.students} color="#fbbf24" />
               <StatCard icon={<Calendar />} label="Offerings" value={stats.offerings} color="#10b981" />
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
               <GlassCard icon={<Bell />} title="Recent Announcements">
                 {anns.slice(0, 3).map((a, i) => (
@@ -404,12 +406,12 @@ const StudentPortal = ({ studentId }) => {
   return (
     <div className="animate-fade-in">
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-        <TabButton active={activeTab === 'offerings'} onClick={() => setActiveTab('offerings')} icon={<Plus size={18}/>} label="Enrollment" />
-        <TabButton active={activeTab === 'my'} onClick={() => setActiveTab('my')} icon={<BookOpen size={18}/>} label="My Courses" />
-        <TabButton active={activeTab === 'timetable'} onClick={() => setActiveTab('timetable')} icon={<Clock size={18}/>} label="Timetable" />
-        <TabButton active={activeTab === 'announcements'} onClick={() => setActiveTab('announcements')} icon={<Bell size={18}/>} label="News" />
-        <TabButton active={activeTab === 'payments'} onClick={() => setActiveTab('payments')} icon={<CreditCard size={18}/>} label="Fee" />
-        <TabButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={<User size={18}/>} label="Profile" />
+        <TabButton active={activeTab === 'offerings'} onClick={() => setActiveTab('offerings')} icon={<Plus size={18} />} label="Enrollment" />
+        <TabButton active={activeTab === 'my'} onClick={() => setActiveTab('my')} icon={<BookOpen size={18} />} label="My Courses" />
+        <TabButton active={activeTab === 'timetable'} onClick={() => setActiveTab('timetable')} icon={<Clock size={18} />} label="Timetable" />
+        <TabButton active={activeTab === 'announcements'} onClick={() => setActiveTab('announcements')} icon={<Bell size={18} />} label="News" />
+        <TabButton active={activeTab === 'payments'} onClick={() => setActiveTab('payments')} icon={<CreditCard size={18} />} label="Fee" />
+        <TabButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={<User size={18} />} label="Profile" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -459,13 +461,13 @@ const StudentPortal = ({ studentId }) => {
 
           {activeTab === 'timetable' && (
             <GlassCard icon={<Clock />} title="Class Schedule">
-               <div className="table-container">
+              <div className="table-container">
                 <table>
                   <thead><tr><th>Day</th><th>Time</th><th>Course</th><th>Room</th></tr></thead>
                   <tbody>
                     {data.length ? data.map((t, idx) => (
                       <tr key={idx}><td>{t.day_of_week || 'TBA'}</td><td>{t.start_time || '--'} - {t.end_time || '--'}</td><td>{t.course_name}</td><td>{t.room_no || 'TBA'}</td></tr>
-                    )) : <tr><td colSpan="4" style={{textAlign: 'center'}}>No schedule found. Update offering details in admin.</td></tr>}
+                    )) : <tr><td colSpan="4" style={{ textAlign: 'center' }}>No schedule found. Update offering details in admin.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -473,7 +475,7 @@ const StudentPortal = ({ studentId }) => {
           )}
 
           {activeTab === 'announcements' && (
-             <div style={{ display: 'grid', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gap: '1.5rem' }}>
               {anns.map((a, i) => (
                 <GlassCard key={i} icon={<Bell />} title={a.title}>
                   <p>{a.content}</p>
@@ -501,7 +503,7 @@ const StudentPortal = ({ studentId }) => {
                     <thead><tr><th>Desc</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
                     <tbody>
                       {data.map((p, i) => (
-                        <tr key={i}><td>{p.description}</td><td>${p.amount}</td><td><span className="badge badge-success">{p.status.toUpperCase()}</span></td><td>{new Date(p.created_at).toLocaleDateString()}</td></tr>
+                        <tr key={i}><td>{p.description}</td><td>${p.amount}</td><td><span className="badge badge-success">{(p.status || 'pending').toUpperCase()}</span></td><td>{new Date(p.created_at).toLocaleDateString()}</td></tr>
                       ))}
                     </tbody>
                   </table>
@@ -528,6 +530,109 @@ const StudentPortal = ({ studentId }) => {
     </div>
   );
 }
+
+// --- Landing Page ---
+
+const LandingPage = ({ onGetStarted }) => {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
+        <LightRays
+          raysOrigin="top-center"
+          raysColor="#ffffff"
+          raysSpeed={1}
+          lightSpread={0.5}
+          rayLength={3}
+          followMouse={true}
+          mouseInfluence={0.1}
+          noiseAmount={0}
+          distortion={0}
+          pulsating={false}
+          fadeDistance={1}
+          saturation={0}
+        />
+      </div>
+
+      <div className="container" style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <nav style={{ padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="logo-box" style={{ width: '40px', height: '40px', background: 'var(--primary)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <GraduationCap color="black" size={20} />
+            </div>
+            <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>AcadTrace</span>
+          </div>
+          <button className="btn btn-secondary" onClick={onGetStarted}>Sign In</button>
+        </nav>
+
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '0 2rem' }}>
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '2rem', marginBottom: '2rem', color: 'white', fontSize: '0.9rem', fontWeight: '500' }}>
+              <span style={{ position: 'relative', display: 'flex', h: '8px', w: '8px' }}>
+                <span style={{ position: 'absolute', display: 'inline-flex', height: '100%', width: '100%', borderRadius: '50%', background: 'white', opacity: 0.75, animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite' }}></span>
+                <span style={{ position: 'relative', display: 'inline-flex', borderRadius: '50%', height: '8px', width: '8px', background: 'white' }}></span>
+              </span>
+              Next Gen Academic Management
+            </div>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="gradient-text"
+            style={{ fontSize: 'clamp(3rem, 6vw, 5rem)', fontWeight: '800', lineHeight: '1.1', marginBottom: '1.5rem', maxWidth: '900px' }}
+          >
+            Shape the Future of <br /> Education Intelligence
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            style={{ fontSize: '1.25rem', color: 'var(--text-muted)', marginBottom: '3rem', maxWidth: '600px', lineHeight: '1.6' }}
+          >
+            An all-in-one platform for students and administrators to track performance, manage courses, and streamline academic life.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            style={{ display: 'flex', gap: '1rem' }}
+          >
+            <button className="btn btn-primary" style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '1rem' }} onClick={onGetStarted}>
+              Get Started <ArrowRight size={20} />
+            </button>
+            <button className="btn btn-secondary" style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '1rem' }}>
+              Learn More
+            </button>
+          </motion.div>
+
+          <div style={{ marginTop: '6rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', width: '100%', maxWidth: '1000px' }}>
+            {[
+              { icon: <Shield size={24} color="white" />, title: "Secure & Reliable", desc: "Enterprise-grade security for your academic data." },
+              { icon: <Zap size={24} color="white" />, title: "Real-time Updates", desc: "Instant notifications for grades and announcements." },
+              { icon: <Globe size={24} color="white" />, title: "Accessible Anywhere", desc: "Manage your academic life from any device, anywhere." }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4 + (i * 0.1) }}
+                className="glass"
+                style={{ padding: '2rem', textAlign: 'left', background: 'rgba(255,255,255,0.02)' }}
+              >
+                <div style={{ marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', width: 'fit-content', padding: '0.75rem', borderRadius: '0.75rem' }}>{item.icon}</div>
+                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{item.title}</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
 
 // --- Login Component ---
 
@@ -590,11 +695,14 @@ const LoginPage = ({ onLogin }) => {
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [showLanding, setShowLanding] = useState(true);
 
   return (
     <>
       <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#fff', border: '1px solid #334155' } }} />
-      {!user ? (
+      {showLanding ? (
+        <LandingPage onGetStarted={() => setShowLanding(false)} />
+      ) : !user ? (
         <LoginPage onLogin={setUser} />
       ) : (
         <div className="container">

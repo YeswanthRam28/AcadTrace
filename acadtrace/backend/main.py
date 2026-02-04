@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
@@ -251,16 +252,51 @@ async def register_course(reg: RegistrationCreate):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute(
-            "INSERT INTO registrations (student_id, offering_id) VALUES (%s, %s) RETURNING *",
-            (reg.student_id, reg.offering_id)
-        )
+        # 1. Check if already registered
+        cur.execute("SELECT id, status FROM registrations WHERE student_id = %s AND offering_id = %s", (reg.student_id, reg.offering_id))
+        existing = cur.fetchone()
+        if existing:
+            if existing['status'] == 'registered':
+                raise HTTPException(status_code=400, detail="You are already registered for this course.")
+            elif existing['status'] == 'dropped':
+                # Re-registering
+                pass # Proceed to update status
+
+        # 2. Check seats
+        cur.execute("SELECT seats_available, total_seats FROM offerings WHERE id = %s FOR UPDATE", (reg.offering_id,))
+        offering = cur.fetchone()
+        if not offering:
+            raise HTTPException(status_code=404, detail="Course offering not found.")
+        
+        if offering['seats_available'] <= 0:
+            raise HTTPException(status_code=400, detail="Class is full.")
+
+        # 3. Register or Re-register
+        if existing:
+            cur.execute("UPDATE registrations SET status = 'registered', grade = NULL WHERE id = %s RETURNING *", (existing['id'],))
+        else:
+            cur.execute(
+                "INSERT INTO registrations (student_id, offering_id, status) VALUES (%s, %s, 'registered') RETURNING *",
+                (reg.student_id, reg.offering_id)
+            )
+        
+        # 4. Update Seats
+        cur.execute("UPDATE offerings SET seats_available = seats_available - 1 WHERE id = %s", (reg.offering_id,))
+        
         conn.commit()
         return cur.fetchone()
+        
     except psycopg2.Error as e:
         conn.rollback()
-        # Extract meaningful error message from PostgreSQL exception
-        raise HTTPException(status_code=400, detail=str(e.pgerror).split('\n')[0])
+        print(f"DB Error: {e}")
+        raise HTTPException(status_code=400, detail="Database error occurred.")
+    except HTTPException as he:
+        conn.rollback()
+        raise he
+    except Exception as e:
+        conn.rollback()
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
         conn.close()
@@ -270,14 +306,27 @@ async def drop_course(reg: RegistrationCreate):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        # Check if actually registered
+        cur.execute("SELECT id FROM registrations WHERE student_id = %s AND offering_id = %s AND status = 'registered'", (reg.student_id, reg.offering_id))
+        registration = cur.fetchone()
+        
+        if not registration:
+             raise HTTPException(status_code=404, detail="Active registration not found")
+
+        # Update status
         cur.execute(
-            "UPDATE registrations SET status = 'dropped' WHERE student_id = %s AND offering_id = %s AND status = 'registered' RETURNING *",
-            (reg.student_id, reg.offering_id)
+            "UPDATE registrations SET status = 'dropped' WHERE id = %s RETURNING *",
+            (registration['id'],)
         )
-        if cur.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Registration not found")
+        
+        # Increment Seats
+        cur.execute("UPDATE offerings SET seats_available = seats_available + 1 WHERE id = %s", (reg.offering_id,))
+        
         conn.commit()
         return {"message": "Dropped successfully"}
+    except HTTPException as he:
+        conn.rollback()
+        raise he
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
