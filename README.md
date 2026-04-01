@@ -1,6 +1,6 @@
 # AcadTrace - Academic Intelligence Engine
 
-AcadTrace is a premium Student Information System built with **FastAPI** (Backend) and **React** (Frontend), powered by a robust **PostgreSQL** database. It features modern glassmorphism design, atomic transactions via DB triggers, and secure role-based access.
+AcadTrace is a premium Student Information System built with **FastAPI** (Backend) and **React** (Frontend), powered by a serverless **NeonDB** database. It features modern glassmorphism design, atomic transactions via DB triggers, and secure role-based access.
 
 ## 🏗️ Project Structure
 ```text
@@ -23,11 +23,13 @@ AcadTrace/
 ## 🚀 Setup & Execution
 
 ### 1. Database Configuration
-1. Create a PostgreSQL database named `acadtrace`.
-2. Execute the SQL scripts in this specific order:
-   - `schema.sql` (Tables)
-   - `triggers.sql` (Business Logic)
-   - `seed.sql` (Test data)
+1. Set up a **NeonDB** project at [neon.tech](https://neon.tech).
+2. Get your connection string and add it to `acadtrace/backend/.env` as `DATABASE_URL`.
+3. Execute the SQL scripts to initialize the schema:
+   - Use the Neon SQL Editor to run:
+     - `schema.sql` (Tables)
+     - `triggers.sql` (Business Logic)
+     - `seed.sql` (Test data)
 3. Run migrations for extended features:
    ```bash
    python migrate.py
@@ -39,7 +41,7 @@ AcadTrace/
    ```bash
    pip install fastapi uvicorn psycopg2-binary python-dotenv
    ```
-3. Update `backend/.env` with your PostgreSQL `DB_PASSWORD`.
+3. Update `backend/.env` with your Neon `DATABASE_URL`.
 4. Start the server:
    ```bash
    python main.py

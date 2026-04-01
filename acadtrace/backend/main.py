@@ -414,11 +414,17 @@ async def add_instructor(inst: InstructorCreate):
 async def get_instructors():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT i.*, d.name as department_name FROM instructors i LEFT JOIN departments d ON i.department_id = d.id")
-    data = cur.fetchall()
-    cur.close()
-    conn.close()
-    return data
+    try:
+        cur.execute("SELECT i.*, d.name as department_name FROM instructors i LEFT JOIN departments d ON i.department_id = d.id")
+        data = cur.fetchall()
+        return data
+    except Exception as e:
+        conn.rollback()
+        print(f"Instructors query error: {e}")
+        return []
+    finally:
+        cur.close()
+        conn.close()
 
 # 3. Student Profile
 @app.get("/api/student/profile/{student_id}")
@@ -522,6 +528,7 @@ async def get_payments(student_id: int):
     cur.close()
     conn.close()
     return data
+
 
 if __name__ == "__main__":
     import uvicorn

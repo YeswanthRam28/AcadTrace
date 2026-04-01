@@ -74,7 +74,7 @@ const AdminDashboard = ({ adminId }) => {
 
   const fetchData = async () => {
     try {
-      const [sRes, dRes, cRes, semRes, instRes, annRes] = await Promise.all([
+      const results = await Promise.allSettled([
         api.get('/admin/stats'),
         api.get('/admin/departments'),
         api.get('/admin/courses'),
@@ -82,12 +82,15 @@ const AdminDashboard = ({ adminId }) => {
         api.get('/admin/instructors'),
         api.get('/announcements')
       ]);
-      setStats(sRes.data);
-      setDeps(dRes.data);
-      setCourses(cRes.data);
-      setSems(semRes.data);
-      setInsts(instRes.data);
-      setAnns(annRes.data);
+      if (results[0].status === 'fulfilled') setStats(results[0].value.data);
+      if (results[1].status === 'fulfilled') setDeps(results[1].value.data);
+      if (results[2].status === 'fulfilled') setCourses(results[2].value.data);
+      if (results[3].status === 'fulfilled') setSems(results[3].value.data);
+      if (results[4].status === 'fulfilled') setInsts(results[4].value.data);
+      if (results[5].status === 'fulfilled') setAnns(results[5].value.data);
+
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) toast.error(`${failed.length} API call(s) failed`);
     } catch (err) {
       toast.error("Failed to load dashboard data");
     } finally {
@@ -525,11 +528,13 @@ const StudentPortal = ({ studentId }) => {
               </form>
             </GlassCard>
           )}
+
         </motion.div>
       </AnimatePresence>
     </div>
   );
 }
+
 
 // --- Landing Page ---
 
