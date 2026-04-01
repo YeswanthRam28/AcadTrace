@@ -4,8 +4,8 @@ import {
   Building2, BookOpen, Calendar, GraduationCap,
   LayoutDashboard, LogOut, Plus, Trash2, History,
   ChevronRight, Users, CheckCircle, AlertCircle,
-  Bell, User, CreditCard, MessageSquare, Clock,
-  Star, Briefcase, FileText, PieChart, Search, Edit3,
+  Bell, User, CreditCard, Clock,
+  Star, Briefcase, FileText, PieChart, Edit3, UserPlus,
   Shield, Zap, Globe, ArrowRight, MousePointer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -55,18 +55,31 @@ const TabButton = ({ active, onClick, icon, label }) => (
     {icon} {label}
   </button>
 );
+const Loader = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+    <motion.div
+      animate={{ rotate: 360 }}
+      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+      style={{ width: '40px', height: '40px', border: '4px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%' }}
+    />
+  </div>
+);
 
 // --- Admin Sub-Components ---
 
 const AdminDashboard = ({ adminId }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [stats, setStats] = useState({ departments: 0, courses: 0, students: 0, offerings: 0 });
+  const [stats, setStats] = useState({ departments: 0, courses: 0, students: 0, offerings: 0, enrollment_growth: 0 });
   const [deps, setDeps] = useState([]);
   const [courses, setCourses] = useState([]);
   const [sems, setSems] = useState([]);
   const [insts, setInsts] = useState([]);
   const [anns, setAnns] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [offerings, setOfferings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOfferingForGrading, setSelectedOfferingForGrading] = useState('');
+  const [enrolledStudents, setEnrolledStudents] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -80,7 +93,9 @@ const AdminDashboard = ({ adminId }) => {
         api.get('/admin/courses'),
         api.get('/admin/semesters'),
         api.get('/admin/instructors'),
-        api.get('/announcements')
+        api.get('/announcements'),
+        api.get('/admin/students'),
+        api.get('/student/offerings') // Admin uses the same offering list logic
       ]);
       if (results[0].status === 'fulfilled') setStats(results[0].value.data);
       if (results[1].status === 'fulfilled') setDeps(results[1].value.data);
@@ -88,6 +103,8 @@ const AdminDashboard = ({ adminId }) => {
       if (results[3].status === 'fulfilled') setSems(results[3].value.data);
       if (results[4].status === 'fulfilled') setInsts(results[4].value.data);
       if (results[5].status === 'fulfilled') setAnns(results[5].value.data);
+      if (results[6].status === 'fulfilled') setStudents(results[6].value.data);
+      if (results[7].status === 'fulfilled') setOfferings(results[7].value.data);
 
       const failed = results.filter(r => r.status === 'rejected');
       if (failed.length > 0) toast.error(`${failed.length} API call(s) failed`);
@@ -105,7 +122,9 @@ const AdminDashboard = ({ adminId }) => {
       toast.success(successMsg);
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Action failed");
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (Array.isArray(detail) ? detail[0]?.msg : "Action failed");
+      toast.error(msg || "Action failed");
     }
   };
 
@@ -115,12 +134,16 @@ const AdminDashboard = ({ adminId }) => {
         <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<LayoutDashboard size={18} />} label="Overview" />
         <TabButton active={activeTab === 'academic'} onClick={() => setActiveTab('academic')} icon={<BookOpen size={18} />} label="Academic Setup" />
         <TabButton active={activeTab === 'instructors'} onClick={() => setActiveTab('instructors')} icon={<Users size={18} />} label="Instructors" />
+        <TabButton active={activeTab === 'students'} onClick={() => setActiveTab('students')} icon={<GraduationCap size={18} />} label="Students" />
         <TabButton active={activeTab === 'announcements'} onClick={() => setActiveTab('announcements')} icon={<Bell size={18} />} label="Announcements" />
-        <TabButton active={activeTab === 'grading'} onClick={() => setActiveTab('grading')} icon={<Edit3 size={18} />} label="Grading" />
+        <TabButton active={activeTab === 'grading'} onClick={() => { setActiveTab('grading'); setSelectedOfferingForGrading(''); }} icon={<Edit3 size={18} />} label="Grading" />
+        <TabButton active={activeTab === 'student-setup'} onClick={() => setActiveTab('student-setup')} icon={<UserPlus size={18} />} label="Student Setup" />
       </div>
 
       <AnimatePresence mode="wait">
-        {activeTab === 'overview' && (
+        {loading ? <Loader /> : (
+          <>
+            {activeTab === 'overview' && (
           <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
               <StatCard icon={<Building2 />} label="Departments" value={stats.departments} color="#818cf8" />
@@ -139,7 +162,7 @@ const AdminDashboard = ({ adminId }) => {
                 ))}
               </GlassCard>
               <GlassCard icon={<History />} title="Quick Stats">
-                <p style={{ color: 'var(--text-muted)' }}>The system is currently serving {stats.students} students across {stats.departments} departments. Enrollment is up by 12% this semester.</p>
+                <p style={{ color: 'var(--text-muted)' }}>The system is currently serving {stats.students} students across {stats.departments} departments. Enrollment is {stats.enrollment_growth >= 0 ? 'up' : 'down'} by {Math.abs(stats.enrollment_growth)}% compared to last semester.</p>
               </GlassCard>
             </div>
           </motion.div>
@@ -162,7 +185,10 @@ const AdminDashboard = ({ adminId }) => {
               <form onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
-                handleAction('post', '/admin/courses', Object.fromEntries(fd), "Course Created");
+                const data = Object.fromEntries(fd);
+                data.department_id = parseInt(data.department_id);
+                data.credits = parseInt(data.credits);
+                handleAction('post', '/admin/courses', data, "Course Created");
                 e.target.reset();
               }}>
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
@@ -200,21 +226,42 @@ const AdminDashboard = ({ adminId }) => {
               <form onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
-                handleAction('post', '/admin/offerings', Object.fromEntries(fd), "Offering Published");
+                const data = Object.fromEntries(fd);
+                data.course_id = parseInt(data.course_id);
+                data.semester_id = parseInt(data.semester_id);
+                data.instructor_id = parseInt(data.instructor_id);
+                data.total_seats = parseInt(data.total_seats);
+                handleAction('post', '/admin/offerings', data, "Offering Published");
                 e.target.reset();
               }}>
-                <select name="course_id" required>
+                <select name="course_id" required style={{ marginBottom: '1rem' }}>
                   <option value="">Select Course</option>
                   {courses.map(c => <option key={c.id} value={c.id}>{c.code} - {c.name}</option>)}
                 </select>
-                <div style={{ display: 'flex', gap: '1rem', margin: '1rem 0' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                   <select name="semester_id" required>
                     <option value="">Semester</option>
                     {sems.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
-                  <input name="total_seats" type="number" placeholder="Seats" required />
+                  <select name="instructor_id" required>
+                    <option value="">Instructor</option>
+                    {insts.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                  </select>
                 </div>
-                <input name="instructor" placeholder="Instructor Name" required />
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                  <select name="day_of_week" required>
+                    <option value="">Day</option>
+                    <option value="Monday">Monday</option><option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option><option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option><option value="Saturday">Saturday</option>
+                  </select>
+                  <input name="room_no" placeholder="Room (e.g. L1)" required />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                  <input name="start_time" type="time" required title="Start Time" />
+                  <input name="end_time" type="time" required title="End Time" />
+                </div>
+                <input name="total_seats" type="number" placeholder="Total Seats" required />
                 <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>Publish</button>
               </form>
             </GlassCard>
@@ -227,7 +274,9 @@ const AdminDashboard = ({ adminId }) => {
               <form onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
-                handleAction('post', '/admin/instructors', Object.fromEntries(fd), "Instructor Added");
+                const data = Object.fromEntries(fd);
+                data.department_id = parseInt(data.department_id);
+                handleAction('post', '/admin/instructors', data, "Instructor Added");
                 e.target.reset();
               }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 0.5fr', gap: '1rem', marginBottom: '2rem' }}>
                 <input name="name" placeholder="Name" required />
@@ -244,6 +293,23 @@ const AdminDashboard = ({ adminId }) => {
                   <tbody>
                     {insts.map((i, idx) => (
                       <tr key={idx}><td>{i.name}</td><td>{i.email}</td><td>{i.department_name}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </GlassCard>
+          </motion.div>
+        )}
+
+        {activeTab === 'students' && (
+          <motion.div key="students" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <GlassCard icon={<GraduationCap />} title="Active Students">
+              <div className="table-container">
+                <table>
+                  <thead><tr><th>Reg No</th><th>Name</th><th>Email</th><th>Contact</th></tr></thead>
+                  <tbody>
+                    {students.map((s, idx) => (
+                      <tr key={idx}><td><strong>{s.reg_no}</strong></td><td>{s.name}</td><td>{s.email}</td><td>{s.phone || 'N/A'}</td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -274,25 +340,103 @@ const AdminDashboard = ({ adminId }) => {
 
         {activeTab === 'grading' && (
           <motion.div key="grading" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <GlassCard icon={<Edit3 />} title="Update Student Grade">
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                handleAction('post', '/admin/grades', {
-                  registration_id: parseInt(e.target.registration_id.value),
-                  grade: e.target.grade.value
-                }, "Grade Updated");
-                e.target.reset();
-              }} style={{ display: 'flex', gap: '1rem' }}>
-                <input name="registration_id" placeholder="Registration ID" required type="number" />
-                <select name="grade" required style={{ width: '120px' }}>
-                  <option value="A">A</option><option value="B">B</option><option value="C">C</option>
-                  <option value="D">D</option><option value="F">F</option>
+            <GlassCard icon={<Edit3 />} title="Class Grading">
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label className="label">Select Offering</label>
+                <select 
+                  value={selectedOfferingForGrading} 
+                  onChange={async (e) => {
+                    const id = e.target.value;
+                    setSelectedOfferingForGrading(id);
+                    if (id) {
+                      const res = await api.get(`/admin/offerings/${id}/registrations`);
+                      setEnrolledStudents(res.data);
+                    } else {
+                      setEnrolledStudents([]);
+                    }
+                  }}
+                >
+                  <option value="">-- Choose a Course Class --</option>
+                  {offerings.map(o => (
+                    <option key={o.id} value={o.id}>
+                      {o.course_code}: {o.course_name} ({o.semester_name}) - {o.instructor}
+                    </option>
+                  ))}
                 </select>
-                <button className="btn btn-primary">Update</button>
-              </form>
-              <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>* Find student Registration IDs in the Student List or Enrollment history.</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>(Only offerings with active registrations are shown here)</p>
+              </div>
+
+              {selectedOfferingForGrading && (
+                <div className="table-container">
+                  <table>
+                    <thead><tr><th>Student</th><th>Reg No</th><th>Current Grade</th><th>Action</th></tr></thead>
+                    <tbody>
+                      {enrolledStudents.map((reg, idx) => (
+                        <tr key={idx}>
+                          <td>{reg.student_name}</td>
+                          <td>{reg.reg_no}</td>
+                          <td><span className="badge badge-info">{reg.grade || 'Not Graded'}</span></td>
+                          <td>
+                            <form 
+                              style={{ display: 'flex', gap: '0.5rem' }} 
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                handleAction('post', '/admin/grades', {
+                                  registration_id: reg.registration_id,
+                                  grade: e.target.grade.value
+                                }, "Grade Assigned");
+                              }}
+                            >
+                              <select name="grade" defaultValue={reg.grade || "A"}>
+                                <option value="A">A</option><option value="B">B</option>
+                                <option value="C">C</option><option value="D">D</option>
+                                <option value="F">F</option>
+                              </select>
+                              <button type="submit" className="btn btn-primary" style={{ padding: '0.25rem 0.5rem' }}>Set</button>
+                            </form>
+                          </td>
+                        </tr>
+                      ))}
+                      {!enrolledStudents.length && <tr><td colSpan="4">No students enrolled in this offering.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </GlassCard>
           </motion.div>
+        )}
+
+        {activeTab === 'student-setup' && (
+          <motion.div key="student-setup" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <GlassCard icon={<UserPlus />} title="Student Account Setup">
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                handleAction('post', '/admin/students', Object.fromEntries(fd), "Student Account Created");
+                e.target.reset();
+              }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label className="label">Full Name</label>
+                  <input name="name" placeholder="John Doe" required />
+                </div>
+                <div>
+                  <label className="label">Registration Number (Username)</label>
+                  <input name="reg_no" placeholder="S12345" required />
+                </div>
+                <div>
+                  <label className="label">Email Address</label>
+                  <input name="email" type="email" placeholder="john@university.edu" required />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label className="label">Access Password</label>
+                  <input name="password" type="password" placeholder="••••••••" required />
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ gridColumn: 'span 2', marginTop: '1rem' }}>Create Account</button>
+              </form>
+            </GlassCard>
+          </motion.div>
+        )}
+          </>
         )}
       </AnimatePresence>
     </div>
@@ -306,9 +450,15 @@ const StudentPortal = ({ studentId }) => {
   const [data, setData] = useState([]);
   const [profile, setProfile] = useState({});
   const [anns, setAnns] = useState([]);
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showReviewModal, setShowReviewModal] = useState(null); // stores offering_id
 
   useEffect(() => {
+    setData([]);
+    setHistory([]);
+    setAnns([]);
+    setProfile({});
     fetchTabData();
   }, [activeTab]);
 
@@ -323,7 +473,7 @@ const StudentPortal = ({ studentId }) => {
         setData(res.data);
       } else if (activeTab === 'history') {
         const res = await api.get(`/student/history/${studentId}`);
-        setData(res.data);
+        setHistory(res.data);
       } else if (activeTab === 'timetable') {
         const res = await api.get(`/student/timetable/${studentId}`);
         setData(res.data);
@@ -411,6 +561,7 @@ const StudentPortal = ({ studentId }) => {
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
         <TabButton active={activeTab === 'offerings'} onClick={() => setActiveTab('offerings')} icon={<Plus size={18} />} label="Enrollment" />
         <TabButton active={activeTab === 'my'} onClick={() => setActiveTab('my')} icon={<BookOpen size={18} />} label="My Courses" />
+        <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<History size={18} />} label="History" />
         <TabButton active={activeTab === 'timetable'} onClick={() => setActiveTab('timetable')} icon={<Clock size={18} />} label="Timetable" />
         <TabButton active={activeTab === 'announcements'} onClick={() => setActiveTab('announcements')} icon={<Bell size={18} />} label="News" />
         <TabButton active={activeTab === 'payments'} onClick={() => setActiveTab('payments')} icon={<CreditCard size={18} />} label="Fee" />
@@ -418,7 +569,8 @@ const StudentPortal = ({ studentId }) => {
       </div>
 
       <AnimatePresence mode="wait">
-        <motion.div key={activeTab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}>
+        {loading ? <Loader /> : (
+          <motion.div key={activeTab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}>
           {activeTab === 'offerings' && (
             <div className="glass" style={{ padding: '0', overflow: 'hidden' }}>
               <div className="table-container">
@@ -452,14 +604,79 @@ const StudentPortal = ({ studentId }) => {
                           <td><strong>{item.course_code}</strong></td><td>{item.instructor}</td><td>{item.semester_name}</td>
                           <td><span className="badge badge-info">{item.grade || '-'}</span></td>
                           <td><span className={`badge ${item.status === 'registered' ? 'badge-success' : 'badge-error'}`}>{item.status}</span></td>
-                          <td>{item.status === 'registered' && <button onClick={() => drop(item.offering_id)} className="btn btn-secondary" style={{ padding: '0.4rem 1rem' }}><Trash2 size={16} /> Drop</button>}</td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              {item.status === 'registered' && <button onClick={() => drop(item.offering_id)} className="btn btn-secondary" style={{ padding: '0.4rem 1rem' }}><Trash2 size={16} /> Drop</button>}
+                              <button onClick={() => setShowReviewModal(item)} className="btn btn-ghost" style={{ padding: '0.4rem 1rem' }}><Star size={16} /> Review</button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               </div>
+
+              {/* Review Modal */}
+              {showReviewModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="glass" style={{ width: '400px', padding: '2.5rem' }}>
+                    <h3 style={{ marginBottom: '1.5rem' }}>Review: {showReviewModal.course_code}</h3>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        await api.post('/student/reviews', {
+                          student_id: studentId,
+                          offering_id: showReviewModal.offering_id || showReviewModal.id,
+                          rating: parseInt(e.target.rating.value),
+                          comment: e.target.comment.value
+                        });
+                        toast.success("Review Submitted!");
+                        setShowReviewModal(null);
+                      } catch (err) {
+                        toast.error("You have already reviewed this course.");
+                      }
+                    }}>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label className="label">Rating (1-5 Stars)</label>
+                        <select name="rating" required>
+                          <option value="5">5 - Excellent</option><option value="4">4 - Very Good</option>
+                          <option value="3">3 - Good</option><option value="2">2 - Fair</option><option value="1">1 - Poor</option>
+                        </select>
+                      </div>
+                      <div style={{ marginBottom: '1.5rem' }}>
+                        <label className="label">Comment</label>
+                        <textarea name="comment" placeholder="What did you think of the course?" required style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '1rem', color: 'white' }}></textarea>
+                      </div>
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Submit</button>
+                        <button type="button" onClick={() => setShowReviewModal(null)} className="btn btn-secondary" style={{ flex: 1 }}>Cancel</button>
+                      </div>
+                    </form>
+                  </motion.div>
+                </div>
+              )}
             </div>
+          )}
+
+          {activeTab === 'history' && (
+            <GlassCard icon={<History />} title="Registration History">
+              <div className="table-container">
+                <table>
+                  <thead><tr><th>Course</th><th>Semester</th><th>Action</th><th>Date</th></tr></thead>
+                  <tbody>
+                    {history.map((h, idx) => (
+                      <tr key={idx}>
+                        <td><strong>{h.course_name}</strong></td><td>{h.semester_name}</td>
+                        <td><span className={`badge ${h.action === 'registered' ? 'badge-success' : 'badge-error'}`}>{h.action.toUpperCase()}</span></td>
+                        <td>{new Date(h.performed_at).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                    {!history.length && <tr><td colSpan="4" style={{ textAlign: 'center' }}>No history found.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </GlassCard>
           )}
 
           {activeTab === 'timetable' && (
@@ -530,6 +747,7 @@ const StudentPortal = ({ studentId }) => {
           )}
 
         </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
@@ -608,12 +826,16 @@ const LandingPage = ({ onGetStarted }) => {
             <button className="btn btn-primary" style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '1rem' }} onClick={onGetStarted}>
               Get Started <ArrowRight size={20} />
             </button>
-            <button className="btn btn-secondary" style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '1rem' }}>
+            <button 
+              className="btn btn-secondary" 
+              style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '1rem' }}
+              onClick={() => document.getElementById('features-section').scrollIntoView({ behavior: 'smooth' })}
+            >
               Learn More
             </button>
           </motion.div>
 
-          <div style={{ marginTop: '6rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', width: '100%', maxWidth: '1000px' }}>
+          <div id="features-section" style={{ marginTop: '6rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', width: '100%', maxWidth: '1000px' }}>
             {[
               { icon: <Shield size={24} color="white" />, title: "Secure & Reliable", desc: "Enterprise-grade security for your academic data." },
               { icon: <Zap size={24} color="white" />, title: "Real-time Updates", desc: "Instant notifications for grades and announcements." },

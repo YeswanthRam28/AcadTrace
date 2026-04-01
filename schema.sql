@@ -29,7 +29,6 @@ CREATE TABLE offerings (
     id SERIAL PRIMARY KEY,
     course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
     semester_id INTEGER REFERENCES semesters(id) ON DELETE CASCADE,
-    instructor VARCHAR(100) NOT NULL,
     total_seats INTEGER NOT NULL CHECK (total_seats > 0),
     seats_available INTEGER NOT NULL CHECK (seats_available >= 0),
     UNIQUE (course_id, semester_id)

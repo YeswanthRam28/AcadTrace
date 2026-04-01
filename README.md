@@ -1,84 +1,58 @@
-# AcadTrace - Academic Intelligence Engine
+# AcadTrace: Academic Intelligence Portal
 
-AcadTrace is a premium Student Information System built with **FastAPI** (Backend) and **React** (Frontend), powered by a serverless **NeonDB** database. It features modern glassmorphism design, atomic transactions via DB triggers, and secure role-based access.
+AcadTrace is a modern, full-stack Academic Management System designed for colleges to manage student enrollments, course offerings, grading, and administrative workflows with a premium, high-performance interface.
 
-## 🏗️ Project Structure
-```text
-AcadTrace/
-├── schema.sql             # Core DB Tables & Relations
-├── triggers.sql           # SQL Triggers for seat management & auditing
-├── seed.sql               # Initial testing data (Admins/Students)
-├── features.sql           # Extended features schema (Instructors, Grades, etc.)
-├── migrate.py             # Database migration utility
-└── acadtrace/             # Main Web Application
-    ├── backend/           # FastAPI Python Backend
-    │   ├── main.py        # API Endpoints & Extended Logic
-    │   ├── db.py          # DB Connection Pool
-    │   └── .env           # DB Credentials
-    └── frontend/          # React + Vite Frontend
-        ├── src/           # Components & Visual Effects (LightRays)
-        └── index.html     # Entry point
+## 🚀 Key Features
+
+### 👨‍🎓 Student Portal
+- **Enrollment System:** Real-time course discovery and one-click registration.
+- **Academic History:** Track all registration and drop actions with a persistent history log.
+- **Interactive Timetable:** View your weekly class schedule with room and instructor details.
+- **Course Reviews:** Rate and comment on courses after completion.
+- **Financial Module:** Transparent fee tracking and payment history.
+- **Profile Management:** Update personal bios, contact information, and mailing addresses.
+
+### 🔑 Admin Dashboard
+- **Instant Analytics:** Live stats for total students, faculty, and enrollment growth.
+- **Department & Course Management:** Hierarchical setup for academic units and curricula.
+- **Dynamic Offerings:** Publish course classes for specific semesters with seat management and scheduling.
+- **Faculty Management:** Dedicated instructor database linked to departments.
+- **Live Grading:** Streamlined interface for assigning grades to enrolled students.
+- **Communications:** Broadcast announcements to the entire institution.
+- **Student Setup:** Create student accounts with secure credentials.
+
+## 🛠️ Technology Stack
+
+- **Frontend:** React, Tailwind-inspired Vanilla CSS, Framer Motion (Animations), Lucide (Icons).
+- **Backend:** FastAPI (Python), PostgreSQL (Neon DB).
+- **Database Logic:** Custom SQL triggers for seat management and registration history.
+- **Performance:** Threaded Connection Pooling for optimized database interaction.
+
+## ⚙️ Local Development
+
+### 1. Backend Setup
+```bash
+cd acadtrace/backend
+pip install -r requirements.txt
+# Create a .env file with your DATABASE_URL
+python main.py
 ```
 
-## 🚀 Setup & Execution
+### 2. Frontend Setup
+```bash
+cd acadtrace/frontend
+npm install
+npm run dev
+```
 
-### 1. Database Configuration
-1. Set up a **NeonDB** project at [neon.tech](https://neon.tech).
-2. Get your connection string and add it to `acadtrace/backend/.env` as `DATABASE_URL`.
-3. Execute the SQL scripts to initialize the schema:
-   - Use the Neon SQL Editor to run:
-     - `schema.sql` (Tables)
-     - `triggers.sql` (Business Logic)
-     - `seed.sql` (Test data)
-3. Run migrations for extended features:
-   ```bash
-   python migrate.py
-   ```
+### 3. Database Initialization
+Use the provided seeding scripts to set up the schema and initial data:
+```bash
+python seed_db.py schema.sql features.sql triggers.sql seed.sql
+```
 
-### 2. Backend Setup (FastAPI)
-1. Navigate to `acadtrace/backend`.
-2. Install dependencies:
-   ```bash
-   pip install fastapi uvicorn psycopg2-binary python-dotenv
-   ```
-3. Update `backend/.env` with your Neon `DATABASE_URL`.
-4. Start the server:
-   ```bash
-   python main.py
-   ```
-
-### 3. Frontend Setup (React)
-1. Navigate to `acadtrace/frontend`.
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-
-## 🔑 Default Credentials
-- **Admin**: Username: `admin` | Password: `admin123`
-- **Student**: Reg No: `2024CS01` | Password: `pass123`
-
-## 💎 Features
-
-### 🎓 Student Ecosystem
-- **GPA Calculator**: Real-time CGPA tracking based on academic performance.
-- **Dynamic Timetable**: Automated schedule generation with room and instructor details.
-- **Enrollment Engine**: One-click registration with real-time seat availability checks.
-- **Profile Hub**: Comprehensive student profile management (Bio, Contact, History).
-- **Payment Portal**: Secure tracking of tuition fees and payment history.
-
-### 👨‍💼 Administrative Suite
-- **Instructor Management**: Dedicated portals to manage faculty and course assignments.
-- **Grading Portal**: Direct interface for bulk grade entry and performance tracking.
-- **Announcement System**: System-wide broadcast system for critical academic news.
-- **Atomic Operations**: Database-level triggers ensure registration integrity and audit logging.
-
-### ✨ Premium Experience
-- **Glassmorphism UI**: High-fidelity dark mode interface with 16px blur backdrops.
-- **LightRay Visuals**: Dynamic background light effects for a "Cyber-Genic" aesthetic.
-- **Modern UX**: Smooth Framer Motion animations and Toast-based real-time feedback.
-- **Full SEO**: Optimized semantic HTML and performance tuning.
+## 📂 Project Structure
+- `acadtrace/frontend`: React application source code.
+- `acadtrace/backend`: FastAPI server and database utilities.
+- `*.sql`: Database schema, features, triggers, and seed data.
+- `seed_db.py`: Database initialization utility.
