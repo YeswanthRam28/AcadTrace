@@ -293,6 +293,15 @@ tr:hover td {
   animation: fadeIn 0.5s ease-out forwards;
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 /* Responsive Overrides */
 @media (max-width: 768px) {
   .container {

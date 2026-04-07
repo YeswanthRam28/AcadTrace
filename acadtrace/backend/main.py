@@ -5,8 +5,11 @@ from typing import List, Optional
 from pydantic import BaseModel
 from db import get_db_connection, release_db_connection, close_pool
 import psycopg2
+from ai_routes import ai_router
 
 app = FastAPI(title="AcadTrace API")
+
+app.include_router(ai_router)
 
 # Enable CORS for React
 app.add_middleware(

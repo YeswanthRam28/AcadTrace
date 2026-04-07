@@ -6,7 +6,7 @@ import {
   ChevronRight, Users, CheckCircle, AlertCircle,
   Bell, User, CreditCard, Clock,
   Star, Briefcase, FileText, PieChart, Edit3, UserPlus,
-  Shield, Zap, Globe, ArrowRight, MousePointer
+  Shield, Zap, Globe, ArrowRight, MousePointer, MessageSquare, Sparkles, Brain, Cpu, TrendingUp, AlertTriangle, Wand2, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
@@ -55,6 +55,88 @@ const TabButton = ({ active, onClick, icon, label }) => (
     {icon} {label}
   </button>
 );
+// --- AI Components ---
+
+const AIChat = ({ studentId }) => {
+  const [messages, setMessages] = useState([{ role: 'assistant', content: "Hello! I'm your AI Academic Advisor. How can I help you today?" }]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+
+    const userMsg = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const res = await api.post('/ai/advisor', { student_id: studentId, question: input });
+      setMessages(prev => [...prev, { role: 'assistant', content: res.data.answer }]);
+    } catch (err) {
+      toast.error("AI Advisor is currently unavailable");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <GlassCard icon={<MessageSquare color="var(--primary)" />} title="AI Academic Advisor">
+      <div style={{ height: '350px', overflowY: 'auto', marginBottom: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%', padding: '0.75rem 1rem', borderRadius: '1rem', background: m.role === 'user' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: m.role === 'user' ? 'black' : 'white', fontSize: '0.9rem', fontWeight: m.role === 'user' ? '600' : '400' }}>
+            {m.content}
+          </div>
+        ))}
+        {loading && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Thinking...</div>}
+      </div>
+      <form onSubmit={sendMessage} style={{ display: 'flex', gap: '0.75rem' }}>
+        <input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask about your credits, grades, or career..." style={{ flex: 1 }} />
+        <button className="btn btn-primary" disabled={loading} style={{ padding: '0.75rem' }}><ArrowRight size={20} /></button>
+      </form>
+    </GlassCard>
+  );
+};
+
+const AIRecommender = ({ studentId }) => {
+  const [recs, setRecs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecs = async () => {
+      try {
+        const res = await api.post(`/ai/recommend-courses/${studentId}`);
+        setRecs(res.data.recommendations);
+      } catch (err) {
+        console.error("Failed to fetch recs");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecs();
+  }, [studentId]);
+
+  if (loading) return <Loader />;
+
+  return (
+    <div style={{ display: 'grid', gap: '1rem' }}>
+      {recs.map((r, i) => (
+        <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className="glass" style={{ padding: '1rem', borderLeft: '4px solid var(--primary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: '700', fontSize: '1rem' }}>Offering #{r.offering_id}</div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {r.tags?.map(t => <span key={t} className="badge badge-success" style={{ fontSize: '0.6rem' }}>{t}</span>)}
+            </div>
+          </div>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{r.reason}</p>
+        </motion.div>
+      ))}
+      {!recs.length && <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No personalized recommendations yet.</div>}
+    </div>
+  );
+};
+
 const Loader = () => (
   <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
     <motion.div
@@ -80,10 +162,42 @@ const AdminDashboard = ({ adminId }) => {
   const [loading, setLoading] = useState(true);
   const [selectedOfferingForGrading, setSelectedOfferingForGrading] = useState('');
   const [enrolledStudents, setEnrolledStudents] = useState([]);
+  const [aiInsights, setAiInsights] = useState('');
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
+  const [draftPrompt, setDraftPrompt] = useState('');
+  const [isDrafting, setIsDrafting] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  const fetchAiInsights = async () => {
+    setAiInsightsLoading(true);
+    try {
+      const res = await api.get('/ai/admin-insights');
+      setAiInsights(res.data.insights);
+    } catch (err) {
+      toast.error("Failed to load AI Insights");
+    } finally {
+      setAiInsightsLoading(false);
+    }
+  };
+
+  const draftAnnouncement = async () => {
+    if (!draftPrompt) return;
+    setIsDrafting(true);
+    try {
+      const res = await api.post('/ai/draft-announcement', { admin_id: adminId, prompt: draftPrompt });
+      // Inject AI draft into current form state if we were in announcements tab
+      // For now we just toast it or show it in a modal
+      toast.success("AI Draft Generated!");
+      return res.data.draft;
+    } catch (err) {
+      toast.error("Drafting failed");
+    } finally {
+      setIsDrafting(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -162,7 +276,21 @@ const AdminDashboard = ({ adminId }) => {
                 ))}
               </GlassCard>
               <GlassCard icon={<History />} title="Quick Stats">
-                <p style={{ color: 'var(--text-muted)' }}>The system is currently serving {stats.students} students across {stats.departments} departments. Enrollment is {stats.enrollment_growth >= 0 ? 'up' : 'down'} by {Math.abs(stats.enrollment_growth)}% compared to last semester.</p>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>The system is currently serving {stats.students} students across {stats.departments} departments. Enrollment is {stats.enrollment_growth >= 0 ? 'up' : 'down'} by {Math.abs(stats.enrollment_growth)}% compared to last semester.</p>
+                
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--primary)' }}><Brain size={16} /> AI Admin Insights</h4>
+                    <button className="btn btn-ghost" onClick={fetchAiInsights} disabled={aiInsightsLoading} style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
+                      <RefreshCw size={14} className={aiInsightsLoading ? 'spin' : ''} /> Refresh
+                    </button>
+                  </div>
+                  {aiInsightsLoading ? <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Analyzing database...</div> : (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text)', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '0.5rem', lineHeight: '1.5' }}>
+                      {aiInsights || "Click refresh to scan for anomalies and enrollment trends."}
+                    </div>
+                  )}
+                </div>
               </GlassCard>
             </div>
           </motion.div>
@@ -321,7 +449,7 @@ const AdminDashboard = ({ adminId }) => {
         {activeTab === 'announcements' && (
           <motion.div key="ann" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <GlassCard icon={<Bell />} title="New Announcement">
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
                 handleAction('post', '/admin/announcements', {
                   title: e.target.title.value,
@@ -329,8 +457,23 @@ const AdminDashboard = ({ adminId }) => {
                   admin_id: adminId
                 }, "Announcement Posted");
                 e.target.reset();
+                setDraftPrompt('');
               }}>
-                <input name="title" placeholder="Announcement Title" required style={{ marginBottom: '1rem' }} />
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                  <input name="title" placeholder="Announcement Title" required style={{ flex: 2 }} />
+                  <div style={{ flex: 1, display: 'flex', gap: '0.5rem' }}>
+                    <input value={draftPrompt} onChange={e => setDraftPrompt(e.target.value)} placeholder="Draft with AI prompt..." style={{ fontSize: '0.8rem' }} />
+                    <button type="button" className="btn btn-secondary" onClick={async (e) => {
+                      const draft = await draftAnnouncement();
+                      if (draft) {
+                        const form = e.target.closest('form');
+                        form.content.value = draft;
+                      }
+                    }} disabled={isDrafting} title="Expand prompt into full announcement">
+                      <Wand2 size={18} />
+                    </button>
+                  </div>
+                </div>
                 <textarea name="content" placeholder="Content details..." required style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '1rem', color: 'white', minHeight: '120px' }}></textarea>
                 <button className="btn btn-primary" style={{ marginTop: '1rem' }}>Post Announcement</button>
               </form>
@@ -455,6 +598,11 @@ const StudentPortal = ({ studentId, initialVtopData }) => {
   const [showReviewModal, setShowReviewModal] = useState(null); // stores offering_id
   const [vtopLoading, setVtopLoading] = useState(false);
   const [vtopData, setVtopData] = useState(initialVtopData || null);
+  const [activeCourseSentiment, setActiveCourseSentiment] = useState({});
+  const [semesterSummary, setSemesterSummary] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [forecast, setForecast] = useState('');
+  const [forecastLoading, setForecastLoading] = useState(false);
 
   useEffect(() => {
     setData([]);
@@ -463,6 +611,41 @@ const StudentPortal = ({ studentId, initialVtopData }) => {
     setProfile({});
     fetchTabData();
   }, [activeTab]);
+
+  const fetchSemesterSummary = async () => {
+    setSummaryLoading(true);
+    try {
+      const res = await api.get(`/ai/semester-summary/${studentId}`);
+      setSemesterSummary(res.data.summary);
+    } catch (err) {
+      toast.error("Failed to load AI Summary");
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const fetchCourseSentiment = async (offeringId) => {
+    try {
+      const res = await api.get(`/ai/course-sentiment/${offeringId}`);
+      setActiveCourseSentiment(prev => ({ ...prev, [offeringId]: res.data.sentiment }));
+    } catch (err) {
+      console.error("Sentiment failed");
+    }
+  };
+
+  const getGpaForecast = async () => {
+    setForecastLoading(true);
+    try {
+      // Mocked scenarios based on current courses for demo
+      const scenarios = data.map(c => ({ course_id: c.id || c.offering_id, expected_grade: 'A' }));
+      const res = await api.post('/ai/gpa-forecast', { student_id: studentId, scenarios });
+      setForecast(res.data.forecast);
+    } catch (err) {
+      toast.error("Forecast failed");
+    } finally {
+      setForecastLoading(false);
+    }
+  };
 
   const fetchTabData = async () => {
     setLoading(true);
@@ -595,28 +778,57 @@ const StudentPortal = ({ studentId, initialVtopData }) => {
         {loading ? <Loader /> : (
           <motion.div key={activeTab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}>
           {activeTab === 'offerings' && (
-            <div className="glass" style={{ padding: '0', overflow: 'hidden' }}>
-              <div className="table-container">
-                <table>
-                  <thead><tr><th>Course</th><th>Instructor</th><th>Semester</th><th>Availability</th><th>Action</th></tr></thead>
-                  <tbody>
-                    {data.map((item, idx) => (
-                      <tr key={idx}>
-                        <td><strong>{item.course_code}</strong><br /><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.course_name}</span></td>
-                        <td>{item.instructor}</td><td>{item.semester_name}</td>
-                        <td><span className={`badge ${item.seats_available > 0 ? 'badge-success' : 'badge-error'}`}>{item.seats_available} / {item.total_seats}</span></td>
-                        <td><button onClick={() => register(item.id)} className="btn btn-primary" style={{ padding: '0.4rem 1rem' }}><Plus size={16} /> Register</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+              <div className="glass" style={{ padding: '0', overflow: 'hidden' }}>
+                <div className="table-container">
+                  <table>
+                    <thead><tr><th>Course</th><th>Instructor</th><th>Semester</th><th>Availability</th><th>Action</th></tr></thead>
+                    <tbody>
+                      {data.map((item, idx) => (
+                        <tr key={idx}>
+                          <td>
+                            <strong>{item.course_code}</strong><br />
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.course_name}</span>
+                            <div style={{ marginTop: '0.5rem' }}>
+                              {!activeCourseSentiment[item.id] ? (
+                                <button className="btn btn-ghost" style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem' }} onClick={() => fetchCourseSentiment(item.id)}><Sparkles size={12} /> AI Sentiment</button>
+                              ) : (
+                                <p style={{ fontSize: '0.7rem', color: 'var(--primary)', fontStyle: 'italic', maxWidth: '200px' }}>"{activeCourseSentiment[item.id]}"</p>
+                              )}
+                            </div>
+                          </td>
+                          <td>{item.instructor}</td><td>{item.semester_name}</td>
+                          <td><span className={`badge ${item.seats_available > 0 ? 'badge-success' : 'badge-error'}`}>{item.seats_available} / {item.total_seats}</span></td>
+                          <td><button onClick={() => register(item.id)} className="btn btn-primary" style={{ padding: '0.4rem 1rem' }}><Plus size={16} /> Register</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <AIChat studentId={studentId} />
+                <GlassCard icon={<Sparkles color="var(--primary)" />} title="Recommended Courses">
+                  <AIRecommender studentId={studentId} />
+                </GlassCard>
               </div>
             </div>
           )}
 
           {activeTab === 'my' && (
             <div>
-              <div style={{ marginBottom: '2rem' }}><StatCard icon={<PieChart />} label="Estimated GPA" value={gpa()} /></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem', marginBottom: '2rem' }}>
+                <StatCard icon={<PieChart />} label="Estimated GPA" value={gpa()} />
+                <div className="glass" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', marginBottom: '0.5rem' }}>
+                      <TrendingUp size={18} /> <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>Smart GPA Forecast</span>
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{forecast || "Click refresh to see academic trajectory."}</p>
+                  </div>
+                  <button className="btn btn-icon" onClick={getGpaForecast} disabled={forecastLoading}><RefreshCw size={18} className={forecastLoading ? 'spin' : ''} /></button>
+                </div>
+              </div>
               <div className="glass" style={{ padding: '0', overflow: 'hidden' }}>
                 <div className="table-container">
                   <table>
@@ -757,6 +969,16 @@ const StudentPortal = ({ studentId, initialVtopData }) => {
 
           {activeTab === 'profile' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <div className="glass" style={{ padding: '1.5rem', borderLeft: '5px solid var(--primary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--primary)' }}><Sparkles size={20} /> AI Academic Summary</h4>
+                  <button className="btn btn-ghost" onClick={fetchSemesterSummary} disabled={summaryLoading}><RefreshCw size={14} className={summaryLoading ? 'spin' : ''} /></button>
+                </div>
+                <p style={{ fontSize: '1rem', lineHeight: '1.6', color: 'var(--text)' }}>
+                  {semesterSummary || "Your personalized AI summary will appear here. Click refresh analyze your recent performance."}
+                </p>
+              </div>
+
               <GlassCard icon={<User />} title="Edit Profile">
                 <form onSubmit={updateProfile} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                   <div><label className="label">Full Name</label><input disabled value={profile.name || ''} /></div>
