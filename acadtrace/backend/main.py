@@ -54,6 +54,11 @@ class LoginRequest(BaseModel):
     id_val: str # reg_no for student, username for admin
     password: str
 
+class VtopSyncRequest(BaseModel):
+    reg_no: str
+    name: str = "VTOP Student"
+    email: str = "vtop@student.edu"
+
 class AnnouncementCreate(BaseModel):
     title: str
     content: str
@@ -108,6 +113,26 @@ async def student_login(req: LoginRequest):
         if not user:
             raise HTTPException(status_code=401, detail="Invalid Registration Number or Password")
         return user
+    finally:
+        cur.close()
+        release_db_connection(conn)
+
+@app.post("/api/auth/vtop_sync")
+async def vtop_sync(req: VtopSyncRequest):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, name, email, reg_no FROM students WHERE reg_no = %s", (req.reg_no,))
+        user = cur.fetchone()
+        if user:
+            return user
+        
+        cur.execute(
+            "INSERT INTO students (reg_no, name, email, password) VALUES (%s, %s, %s, %s) RETURNING id, reg_no, name, email",
+            (req.reg_no, req.name, req.email, "vtop_auto")
+        )
+        conn.commit()
+        return cur.fetchone()
     finally:
         cur.close()
         release_db_connection(conn)

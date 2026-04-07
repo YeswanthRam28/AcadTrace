@@ -1,16 +1,16 @@
 :root {
-  --primary: #ffffff;
-  --primary-hover: #e2e2e2;
-  --secondary: #27272a;
-  --bg: #000000;
-  --card-bg: rgba(18, 18, 18, 0.6);
-  --border: rgba(255, 255, 255, 0.15);
-  --text: #ffffff;
-  --text-muted: #a1a1aa;
+  --primary: #C0382B;
+  --primary-hover: #b02d21;
+  --secondary: #A8A49C;
+  --bg: #111110;
+  --card-bg: #1A1918;
+  --border: rgba(232,228,220,0.08);
+  --text: #E8E4DC;
+  --text-muted: #A8A49C;
   --success: #10b981;
   --error: #ef4444;
-  --font-main: 'Outfit', 'Inter', system-ui, sans-serif;
-  --primary-shadow: rgba(255, 255, 255, 0.2);
+  --font-main: 'DM Sans', 'Inter', system-ui, sans-serif;
+  --primary-shadow: rgba(192,56,43,0.35);
 }
 
 * {

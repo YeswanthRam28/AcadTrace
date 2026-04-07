@@ -445,7 +445,7 @@ const AdminDashboard = ({ adminId }) => {
 
 // --- Student Sub-Components ---
 
-const StudentPortal = ({ studentId }) => {
+const StudentPortal = ({ studentId, initialVtopData }) => {
   const [activeTab, setActiveTab] = useState('offerings');
   const [data, setData] = useState([]);
   const [profile, setProfile] = useState({});
@@ -453,6 +453,8 @@ const StudentPortal = ({ studentId }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(null); // stores offering_id
+  const [vtopLoading, setVtopLoading] = useState(false);
+  const [vtopData, setVtopData] = useState(initialVtopData || null);
 
   useEffect(() => {
     setData([]);
@@ -553,6 +555,27 @@ const StudentPortal = ({ studentId }) => {
       fetchTabData();
     } catch (err) {
       toast.error("Payment failed");
+    }
+  };
+
+  const fetchVtopData = async (e) => {
+    e.preventDefault();
+    setVtopLoading(true);
+    try {
+      const res = await axios.post('http://localhost:4000/fetch', {
+        username: e.target.username.value,
+        password: e.target.password.value
+      });
+      if (res.data.success) {
+        setVtopData(res.data.data);
+        toast.success("Successfully fetched VTOP data!");
+      } else {
+        toast.error(res.data.error || "Failed to fetch VTOP data");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || "Failed to fetch VTOP data");
+    } finally {
+      setVtopLoading(false);
     }
   };
 
@@ -733,17 +756,51 @@ const StudentPortal = ({ studentId }) => {
           )}
 
           {activeTab === 'profile' && (
-            <GlassCard icon={<User />} title="Edit Profile">
-              <form onSubmit={updateProfile} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div><label className="label">Full Name</label><input disabled value={profile.name || ''} /></div>
-                <div><label className="label">Registration No</label><input disabled value={profile.reg_no || ''} /></div>
-                <div><label className="label">Email Address</label><input disabled value={profile.email || ''} /></div>
-                <div><label className="label">Phone Number</label><input name="phone" defaultValue={profile.phone || ''} placeholder="+1 234 567 890" /></div>
-                <div style={{ gridColumn: 'span 2' }}><label className="label">Address</label><input name="address" defaultValue={profile.address || ''} placeholder="Mailing Address" /></div>
-                <div style={{ gridColumn: 'span 2' }}><label className="label">Bio</label><textarea name="bio" defaultValue={profile.bio || ''} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '1rem', color: 'white' }}></textarea></div>
-                <button className="btn btn-primary">Save Changes</button>
-              </form>
-            </GlassCard>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <GlassCard icon={<User />} title="Edit Profile">
+                <form onSubmit={updateProfile} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div><label className="label">Full Name</label><input disabled value={profile.name || ''} /></div>
+                  <div><label className="label">Registration No</label><input disabled value={profile.reg_no || ''} /></div>
+                  <div><label className="label">Email Address</label><input disabled value={profile.email || ''} /></div>
+                  <div><label className="label">Phone Number</label><input name="phone" defaultValue={profile.phone || ''} placeholder="+1 234 567 890" /></div>
+                  <div style={{ gridColumn: 'span 2' }}><label className="label">Address</label><input name="address" defaultValue={profile.address || ''} placeholder="Mailing Address" /></div>
+                  <div style={{ gridColumn: 'span 2' }}><label className="label">Bio</label><textarea name="bio" defaultValue={profile.bio || ''} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '1rem', color: 'white' }}></textarea></div>
+                  <button className="btn btn-primary">Save Changes</button>
+                </form>
+              </GlassCard>
+
+              <GlassCard icon={<Globe />} title="VTOP Integration">
+                {!vtopData ? (
+                  <form onSubmit={fetchVtopData} style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>Enter your VTOP credentials to fetch your academic details.</p>
+                    <div><label className="label">VTOP Username</label>
+                      <input name="username" defaultValue={profile.reg_no || ''} required />
+                    </div>
+                    <div><label className="label">VTOP Password</label>
+                      <input name="password" type="password" required />
+                    </div>
+                    <button type="submit" className="btn btn-primary" disabled={vtopLoading}>
+                      {vtopLoading ? "Authenticating & Fetching..." : "Fetch VTOP Details"}
+                    </button>
+                  </form>
+                ) : (
+                  <div>
+                    <h4 style={{ marginBottom: '1rem', color: 'var(--primary)', letterSpacing: '0.05rem', textTransform: 'uppercase', fontSize: '0.9rem' }}>Fetched VTOP Details</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '0.5rem' }}>
+                      {Object.entries(vtopData).map(([key, value]) => (
+                        <div key={key}>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'capitalize', marginBottom: '0.25rem' }}>
+                            {key.replace(/_/g, ' ')}
+                          </div>
+                          <div style={{ fontWeight: '500' }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={() => setVtopData(null)} className="btn btn-secondary" style={{ marginTop: '1.5rem' }}>Disconnect / Clear Data</button>
+                  </div>
+                )}
+              </GlassCard>
+            </div>
           )}
 
         </motion.div>
@@ -753,110 +810,349 @@ const StudentPortal = ({ studentId }) => {
   );
 }
 
-
 // --- Landing Page ---
 
 const LandingPage = ({ onGetStarted }) => {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
-        <LightRays
-          raysOrigin="top-center"
-          raysColor="#ffffff"
-          raysSpeed={1}
-          lightSpread={0.5}
-          rayLength={3}
-          followMouse={true}
-          mouseInfluence={0.1}
-          noiseAmount={0}
-          distortion={0}
-          pulsating={false}
-          fadeDistance={1}
-          saturation={0}
-        />
-      </div>
-
-      <div className="container" style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <nav style={{ padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div className="logo-box" style={{ width: '40px', height: '40px', background: 'var(--primary)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <GraduationCap color="black" size={20} />
-            </div>
-            <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>AcadTrace</span>
+    <div className="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container relative">
+      <div className="trace-line"></div>
+      
+      {/* Navigation */}
+      <nav className="fixed top-0 w-full h-[64px] z-50 bg-[#111110]/80 backdrop-blur-md border-b border-[#59413d]/10">
+        <div className="flex justify-between items-center px-8 w-full max-w-screen-2xl mx-auto h-full">
+          <div className="text-xl font-bold font-mono text-[#E8E4DC] tracking-tighter">ACADTRACE</div>
+          <div className="hidden md:flex items-center space-gap-8 gap-x-12">
+            <a className="font-mono uppercase tracking-[0.16em] text-[10px] text-[#C0382B] font-bold" href="#">Theory</a>
+            <a className="font-mono uppercase tracking-[0.16em] text-[10px] text-[#A8A49C] hover:text-[#E8E4DC] transition-colors duration-200" href="#">Archive</a>
+            <a className="font-mono uppercase tracking-[0.16em] text-[10px] text-[#A8A49C] hover:text-[#E8E4DC] transition-colors duration-200" href="#">Methodology</a>
           </div>
-          <button className="btn btn-secondary" onClick={onGetStarted}>Sign In</button>
-        </nav>
+          <button onClick={onGetStarted} className="bg-[#C0382B] text-[#E8E4DC] font-mono text-[10px] uppercase tracking-widest px-6 py-2 transition-opacity active:opacity-80">
+            Request Access
+          </button>
+        </div>
+      </nav>
 
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '0 2rem' }}>
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '2rem', marginBottom: '2rem', color: 'white', fontSize: '0.9rem', fontWeight: '500' }}>
-              <span style={{ position: 'relative', display: 'flex', h: '8px', w: '8px' }}>
-                <span style={{ position: 'absolute', display: 'inline-flex', height: '100%', width: '100%', borderRadius: '50%', background: 'white', opacity: 0.75, animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite' }}></span>
-                <span style={{ position: 'relative', display: 'inline-flex', borderRadius: '50%', height: '8px', width: '8px', background: 'white' }}></span>
-              </span>
-              Next Gen Academic Management
+      <main className="pt-16">
+        {/* Hero Section */}
+        <section className="relative px-8 pt-24 pb-12 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            <div className="lg:col-span-7 flex flex-col justify-center">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C0382B] mb-6">System Protocol 4.02</p>
+              <h1 className="text-5xl md:text-7xl font-bold text-on-surface leading-[1.1] tracking-tight mb-8">
+                Your University. <br />
+                <span className="font-serif italic font-normal">Finally Intelligent.</span>
+              </h1>
+              <p className="text-lg text-secondary max-w-xl mb-10 leading-relaxed">
+                A brutalist approach to academic management. Track, analyze, and optimize your institutional trajectory with archival precision and real-time synchronicity.
+              </p>
+              <div className="flex flex-wrap gap-4 mb-16">
+                <button onClick={onGetStarted} className="bg-primary-container text-on-surface px-10 py-4 font-bold uppercase tracking-widest text-xs hover:bg-[#a02e23] transition-colors">Deploy System</button>
+                <button className="border border-[#59413d]/30 text-on-surface px-10 py-4 font-bold uppercase tracking-widest text-xs hover:bg-surface-container-high transition-colors">Review Theory</button>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="flex -space-x-4">
+                  <div className="w-10 h-10 border-2 border-background bg-surface-container-highest"></div>
+                  <div className="w-10 h-10 border-2 border-background bg-surface-container-high"></div>
+                  <div className="w-10 h-10 border-2 border-background bg-secondary-container"></div>
+                </div>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-secondary/60">Currently serving 42,000+ Active Records</p>
+              </div>
             </div>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-            className="gradient-text"
-            style={{ fontSize: 'clamp(3rem, 6vw, 5rem)', fontWeight: '800', lineHeight: '1.1', marginBottom: '1.5rem', maxWidth: '900px' }}
-          >
-            Shape the Future of <br /> Education Intelligence
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            style={{ fontSize: '1.25rem', color: 'var(--text-muted)', marginBottom: '3rem', maxWidth: '600px', lineHeight: '1.6' }}
-          >
-            An all-in-one platform for students and administrators to track performance, manage courses, and streamline academic life.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            style={{ display: 'flex', gap: '1rem' }}
-          >
-            <button className="btn btn-primary" style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '1rem' }} onClick={onGetStarted}>
-              Get Started <ArrowRight size={20} />
-            </button>
-            <button 
-              className="btn btn-secondary" 
-              style={{ padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '1rem' }}
-              onClick={() => document.getElementById('features-section').scrollIntoView({ behavior: 'smooth' })}
-            >
-              Learn More
-            </button>
-          </motion.div>
-
-          <div id="features-section" style={{ marginTop: '6rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', width: '100%', maxWidth: '1000px' }}>
-            {[
-              { icon: <Shield size={24} color="white" />, title: "Secure & Reliable", desc: "Enterprise-grade security for your academic data." },
-              { icon: <Zap size={24} color="white" />, title: "Real-time Updates", desc: "Instant notifications for grades and announcements." },
-              { icon: <Globe size={24} color="white" />, title: "Accessible Anywhere", desc: "Manage your academic life from any device, anywhere." }
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 + (i * 0.1) }}
-                className="glass"
-                style={{ padding: '2rem', textAlign: 'left', background: 'rgba(255,255,255,0.02)' }}
-              >
-                <div style={{ marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', width: 'fit-content', padding: '0.75rem', borderRadius: '0.75rem' }}>{item.icon}</div>
-                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{item.title}</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{item.desc}</p>
-              </motion.div>
-            ))}
+            
+            <div className="lg:col-span-5 relative group">
+              <div className="bg-surface-container-low border border-outline-variant/10 p-2 relative">
+                <div className="flex gap-1.5 mb-2 px-2 pt-1">
+                  <div className="w-2 h-2 rounded-full bg-outline-variant/30"></div>
+                  <div className="w-2 h-2 rounded-full bg-outline-variant/30"></div>
+                  <div className="w-2 h-2 rounded-full bg-outline-variant/30"></div>
+                </div>
+                <img alt="System Interface" className="w-full grayscale contrast-125 opacity-80" data-alt="Dark sophisticated dashboard UI with minimalist charts, data tables, and high contrast red accents on a deep charcoal background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDswxPvNXrqpk7EDEiDLELWa_0_d9i6FoSUKOS9hHXe6Ml_3UBi2RnP74X8a_ZhxMylw_LYvy0cpehTBJCxwLmOX1eYmeo8kMqF-AFYXbGwp-4WJqIZ2c7zhqHYjfm5WqIV7RrKaS7ZXVoM2PrS391qPKIOu4ANhwE79jo6LweGx6qXbB7qiYi3dktzV81E7EhMfYlRGhSkjhndTMl5M1NCHrC5NWNGvwxmfqt4xGjcfjSs43Lv36wD_5_4Lftq00MoHOA6wkvz1ws" />
+              </div>
+              <div className="absolute -bottom-6 -left-6 bg-primary-container p-6 hidden md:block">
+                <div className="font-mono text-xs text-on-surface font-bold">LIVE_LOAD: 98.4%</div>
+                <div className="font-mono text-[9px] text-on-surface/80">LATENCY: 12ms</div>
+              </div>
+            </div>
           </div>
-        </main>
-      </div>
+        </section>
+
+        {/* Institution Strip */}
+        <section className="border-y border-outline-variant/5 py-12 bg-surface-container-lowest overflow-hidden">
+          <div className="flex whitespace-nowrap gap-16 items-center animate-infinite-scroll">
+            <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-secondary/40">Stanford University</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-secondary/40">MIT Technical</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-secondary/40">Oxford Archive</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-secondary/40">ETH Zürich</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-secondary/40">Yale Institution</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-secondary/40">Harvard Medical</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-secondary/40">CalTech Laboratory</span>
+          </div>
+        </section>
+
+        {/* The Problem */}
+        <section className="px-8 py-32 max-w-5xl mx-auto text-center">
+          <h2 className="text-4xl md:text-6xl font-serif italic mb-16 text-on-surface leading-tight">
+            Why is the center of intelligence <br /> still managed by <span className="not-italic text-primary-container">legacy decay?</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-left">
+            <div className="space-y-4">
+              <span className="material-symbols-outlined text-primary-container text-3xl">trending_down</span>
+              <h3 className="font-bold text-xl">Fragmented Data</h3>
+              <p className="text-secondary text-sm leading-relaxed">Silos of information that never speak to each other, creating a gap in institutional visibility.</p>
+            </div>
+            <div className="space-y-4">
+              <span className="material-symbols-outlined text-primary-container text-3xl">emergency_home</span>
+              <h3 className="font-bold text-xl">Manual Friction</h3>
+              <p className="text-secondary text-sm leading-relaxed">Enrollment processes that feel like paper-pushing in the age of algorithmic precision.</p>
+            </div>
+            <div className="space-y-4">
+              <span className="material-symbols-outlined text-primary-container text-3xl">visibility_off</span>
+              <h3 className="font-bold text-xl">Opaque Progress</h3>
+              <p className="text-secondary text-sm leading-relaxed">Students navigating their future through a fog of outdated portals and static PDFs.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Bento Grid */}
+        <section className="px-8 py-20 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-8 bg-surface-container-low p-10 border border-outline-variant/10 flex flex-col justify-between min-h-[400px]">
+              <div>
+                <span className="font-mono text-[10px] text-primary-container uppercase tracking-widest block mb-4">Module 01</span>
+                <h3 className="text-4xl font-bold mb-6">One-Click Enrollment</h3>
+                <p className="text-secondary max-w-md">Proprietary pathfinding algorithms that secure your seat in milliseconds. Say goodbye to server timeouts.</p>
+              </div>
+              <div className="mt-8 flex justify-end">
+                <span className="material-symbols-outlined text-6xl text-surface-container-highest">bolt</span>
+              </div>
+            </div>
+            
+            <div className="md:col-span-4 bg-surface-container-high p-8 border border-outline-variant/10 flex flex-col items-center justify-center text-center">
+              <div className="relative w-48 h-24 mb-6">
+                <svg className="w-full h-full transform -rotate-180" viewBox="0 0 100 50">
+                  <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2a2a29" strokeWidth="8"></path>
+                  <path d="M 10 50 A 40 40 0 0 1 70 20" fill="none" stroke="#c0382b" strokeWidth="8"></path>
+                </svg>
+                <div className="absolute inset-0 flex items-end justify-center pb-2">
+                  <span className="text-3xl font-bold font-mono">3.88</span>
+                </div>
+              </div>
+              <h3 className="font-bold text-lg mb-2">Live GPA Calculator</h3>
+              <p className="font-mono text-[10px] text-secondary/60 uppercase">Predictive Weighting Active</p>
+            </div>
+
+            <div className="md:col-span-4 bg-surface-container-low p-8 border border-outline-variant/10">
+              <span className="material-symbols-outlined text-primary-container mb-4">sync</span>
+              <h3 className="font-bold text-xl mb-4">VTOP Sync</h3>
+              <p className="text-secondary text-sm">Deep integration with legacy campus portals for seamless data harvesting and visualization.</p>
+            </div>
+
+            <div className="md:col-span-4 bg-surface p-8 border border-outline-variant/10 relative overflow-hidden group">
+              <h3 className="font-bold text-xl mb-4">Timetable Visualizer</h3>
+              <div className="space-y-2 opacity-40 group-hover:opacity-60 transition-opacity">
+                <div className="h-4 bg-primary-container/20 w-full"></div>
+                <div className="h-4 bg-surface-container-highest w-3/4"></div>
+                <div className="h-4 bg-primary-container/40 w-5/6"></div>
+              </div>
+              <div className="mt-6 font-mono text-[9px] uppercase tracking-tighter">Conflict Detection: Nominal</div>
+            </div>
+
+            <div className="md:col-span-4 bg-surface-container-lowest p-8 border border-outline-variant/10">
+              <h3 className="font-bold text-xl mb-4">Grade Ledger</h3>
+              <div className="font-mono text-[10px] space-y-1">
+                <div className="flex justify-between border-b border-outline-variant/10 py-1"><span>CS102</span><span className="text-primary-container">A+</span></div>
+                <div className="flex justify-between border-b border-outline-variant/10 py-1"><span>MAT201</span><span className="text-primary-container">A</span></div>
+                <div className="flex justify-between py-1"><span>PHO100</span><span className="text-primary-container">B+</span></div>
+              </div>
+            </div>
+
+            <div className="md:col-span-12 bg-surface-container-lowest p-12 border border-outline-variant/10 flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="max-w-xl">
+                <h3 className="text-3xl font-bold mb-4">Admin Command Center</h3>
+                <p className="text-secondary">Full institutional control for faculty. Manage attendance, process grades, and monitor student health metrics from a single terminal.</p>
+              </div>
+              <button onClick={onGetStarted} className="bg-on-surface text-background px-8 py-3 font-bold uppercase text-xs tracking-widest hover:bg-opacity-80 transition-opacity">Access Mainframe</button>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works */}
+        <section className="px-8 py-32 bg-surface-container-lowest">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-20">
+              <h2 className="text-4xl font-bold uppercase tracking-tighter">The Implementation</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 relative">
+              <div className="hidden md:block absolute top-12 left-0 w-full h-[1px] border-t border-dashed border-outline-variant/30 z-0"></div>
+              
+              <div className="relative z-10 pr-12 pb-12">
+                <div className="w-24 h-24 bg-background border border-outline-variant/10 flex items-center justify-center mb-8">
+                  <span className="font-mono text-4xl text-primary-container font-bold">01</span>
+                </div>
+                <h4 className="font-bold text-xl mb-4 uppercase">Identity Hook</h4>
+                <p className="text-secondary text-sm">Securely connect your institutional credentials to the Trace Network using encrypted handshake protocols.</p>
+              </div>
+              
+              <div className="relative z-10 pr-12 pb-12">
+                <div className="w-24 h-24 bg-background border border-outline-variant/10 flex items-center justify-center mb-8">
+                  <span className="font-mono text-4xl text-primary-container font-bold">02</span>
+                </div>
+                <h4 className="font-bold text-xl mb-4 uppercase">Record Extraction</h4>
+                <p className="text-secondary text-sm">Our system parses your academic history, current timetable, and attendance metrics into a unified database.</p>
+              </div>
+              
+              <div className="relative z-10 pb-12">
+                <div className="w-24 h-24 bg-background border border-outline-variant/10 flex items-center justify-center mb-8">
+                  <span className="font-mono text-4xl text-primary-container font-bold">03</span>
+                </div>
+                <h4 className="font-bold text-xl mb-4 uppercase">Active Guidance</h4>
+                <p className="text-secondary text-sm">Receive real-time alerts, performance optimizations, and one-click actions via your personal dashboard.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Security Terminal */}
+        <section className="px-8 py-32 max-w-5xl mx-auto">
+          <div className="bg-[#0e0e0d] border border-outline-variant/20 p-1 font-mono text-[12px]">
+            <div className="bg-surface-container-low px-4 py-2 border-b border-outline-variant/20 flex justify-between items-center">
+              <span className="text-secondary/60">ACADTRACE_SECURE_TERMINAL_v4.0</span>
+              <div className="flex gap-2">
+                <div className="w-2 h-2 rounded-full bg-outline-variant/20"></div>
+                <div className="w-2 h-2 rounded-full bg-outline-variant/20"></div>
+                <div className="w-2 h-2 rounded-full bg-primary-container/60"></div>
+              </div>
+            </div>
+            <div className="p-8 space-y-2 min-h-[300px]">
+              <div className="text-secondary/40">Initializing archival layer...</div>
+              <div className="text-[#E8E4DC]">Establishing P2P handshake with University Database... <span className="text-primary-container">SUCCESS</span></div>
+              <div className="text-[#E8E4DC]">Applying AES-256 institutional encryption...</div>
+              <div className="text-[#E8E4DC]">Scanning for systemic anomalies... <span className="text-primary-container">0 DETECTED</span></div>
+              <div className="text-[#E8E4DC]">Identity: USER_8821 verified via BioTrace.</div>
+              <div className="flex items-center gap-1">
+                <span className="text-[#E8E4DC]">root@acadtrace:~$</span>
+                <span className="text-primary-container animate-pulse">_</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="font-bold text-2xl mb-4">Hardened Security</h3>
+              <p className="text-secondary text-sm">We don't store your passwords. We use persistent tokens and end-to-end encryption to ensure your academic records remain private and permanent.</p>
+            </div>
+            <div className="flex items-center justify-end">
+              <span className="material-symbols-outlined text-6xl text-outline-variant/20">fingerprint</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Dual Role Split */}
+        <section className="grid grid-cols-1 md:grid-cols-2 border-t border-outline-variant/10">
+          <div className="p-20 border-r border-outline-variant/10 hover:bg-surface-container-lowest transition-colors group">
+            <span className="font-mono text-[10px] text-primary-container uppercase tracking-widest block mb-4">Perspective A</span>
+            <h3 className="text-5xl font-bold mb-10">For Students</h3>
+            <ul className="space-y-6">
+              <li className="flex items-start gap-4">
+                <span className="material-symbols-outlined text-primary-container mt-1">arrow_forward</span>
+                <span className="text-lg text-secondary group-hover:text-on-surface transition-colors">Automated Slot Booking and Conflict Resolution</span>
+              </li>
+              <li className="flex items-start gap-4">
+                <span className="material-symbols-outlined text-primary-container mt-1">arrow_forward</span>
+                <span className="text-lg text-secondary group-hover:text-on-surface transition-colors">Performance Prediction and GPA Guardrails</span>
+              </li>
+              <li className="flex items-start gap-4">
+                <span className="material-symbols-outlined text-primary-container mt-1">arrow_forward</span>
+                <span className="text-lg text-secondary group-hover:text-on-surface transition-colors">Centralized Assignment Repository</span>
+              </li>
+            </ul>
+          </div>
+          <div className="p-20 hover:bg-surface-container-lowest transition-colors group">
+            <span className="font-mono text-[10px] text-primary-container uppercase tracking-widest block mb-4">Perspective B</span>
+            <h3 className="text-5xl font-bold mb-10">For Faculty</h3>
+            <ul className="space-y-6">
+              <li className="flex items-start gap-4">
+                <span className="material-symbols-outlined text-primary-container mt-1">arrow_forward</span>
+                <span className="text-lg text-secondary group-hover:text-on-surface transition-colors">Mass Attendance Capture via QR/NFC</span>
+              </li>
+              <li className="flex items-start gap-4">
+                <span className="material-symbols-outlined text-primary-container mt-1">arrow_forward</span>
+                <span className="text-lg text-secondary group-hover:text-on-surface transition-colors">Direct Student Engagement Analytics</span>
+              </li>
+              <li className="flex items-start gap-4">
+                <span className="material-symbols-outlined text-primary-container mt-1">arrow_forward</span>
+                <span className="text-lg text-secondary group-hover:text-on-surface transition-colors">Automated Grade Curve Balancing</span>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="px-8 py-40 text-center bg-surface-container-lowest">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-5xl md:text-8xl font-bold tracking-tighter mb-12 uppercase leading-none">
+              Your semester, <br /> <span className="font-serif italic font-normal text-on-surface/80">under control.</span>
+            </h2>
+            <div className="flex justify-center">
+              <button onClick={onGetStarted} className="relative group p-1 border-2 border-primary-container hover:scale-105 transition-transform duration-300">
+                <div className="bg-primary-container text-on-surface px-12 py-5 font-bold uppercase tracking-[0.2em] text-sm relative z-10 hover:bg-[#a02e23] transition-colors">
+                  Initialize Deployment
+                </div>
+              </button>
+            </div>
+            <p className="mt-12 font-mono text-[10px] uppercase tracking-widest text-secondary/40">Limited institutional slots available for Q4.</p>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-[#111110] w-full border-t border-[#59413d]/10 pt-20 pb-10 relative z-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 px-8 max-w-7xl mx-auto">
+          <div className="col-span-2 md:col-span-1">
+            <div className="text-lg font-bold text-[#E8E4DC] font-mono mb-6">ACADTRACE</div>
+            <p className="font-mono text-[10px] text-[#A8A49C] leading-loose">
+              THE PERMANENT RECORD.<br />
+              VERSION 4.02 // ARCHIVE 2024
+            </p>
+          </div>
+          <div className="space-y-4">
+            <h5 className="font-mono text-[10px] text-[#E8E4DC] uppercase font-bold tracking-widest">Protocol</h5>
+            <ul className="space-y-2">
+              <li><a className="font-mono text-[10px] text-[#A8A49C] hover:text-[#C0382B] transition-all duration-300" href="#">Case Studies</a></li>
+              <li><a className="font-mono text-[10px] text-[#A8A49C] hover:text-[#C0382B] transition-all duration-300" href="#">Documentation</a></li>
+              <li><a className="font-mono text-[10px] text-[#A8A49C] hover:text-[#C0382B] transition-all duration-300" href="#">API Terminal</a></li>
+            </ul>
+          </div>
+          <div className="space-y-4">
+            <h5 className="font-mono text-[10px] text-[#E8E4DC] uppercase font-bold tracking-widest">Governance</h5>
+            <ul className="space-y-2">
+              <li><a className="font-mono text-[10px] text-[#A8A49C] hover:text-[#C0382B] transition-all duration-300" href="#">Institutional Access</a></li>
+              <li><a className="font-mono text-[10px] text-[#A8A49C] hover:text-[#C0382B] transition-all duration-300" href="#">Academic Standards</a></li>
+              <li><a className="font-mono text-[10px] text-[#A8A49C] hover:text-[#C0382B] transition-all duration-300" href="#">Privacy Archive</a></li>
+            </ul>
+          </div>
+          <div className="space-y-4 text-right">
+            <div className="font-mono text-[10px] text-[#A8A49C]">SYSTEM_STATUS: <span className="text-green-500">OPTIMAL</span></div>
+            <div className="font-mono text-[10px] text-[#A8A49C]">UPTIME: 99.998%</div>
+          </div>
+        </div>
+        <div className="mt-20 border-t border-[#59413d]/5 pt-10 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#A8A49C]">© 2024 ACADTRACE. FOR THE PERMANENT RECORD.</p>
+        </div>
+      </footer>
+      
+      {/* Global Style additions for custom elements like trace-line */}
+      <style>{`
+        .trace-line {
+            position: absolute;
+            left: 4rem;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background-color: #A8A49C;
+            opacity: 0.1;
+            z-index: 10;
+        }
+      `}</style>
     </div>
   );
 };
@@ -873,12 +1169,31 @@ const LoginPage = ({ onLogin }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const endpoint = role === 'admin' ? '/auth/login/admin' : '/auth/login/student';
-      const res = await api.post(endpoint, { id_val: idVal, password });
-      onLogin({ ...res.data, role });
-      toast.success(`Welcome back, ${res.data.name}!`);
+      if (role === 'admin') {
+        const res = await api.post('/auth/login/admin', { id_val: idVal, password });
+        onLogin({ ...res.data, role });
+        toast.success(`Welcome back, ${res.data.name}!`);
+      } else {
+        toast.loading("Authenticating with VTOP...");
+        const vtopRes = await axios.post('http://localhost:4000/fetch', { username: idVal, password });
+        toast.dismiss();
+        
+        if (vtopRes.data.success) {
+          const vtopData = vtopRes.data.data;
+          // sync with acadtrace db to get student ID
+          const name = vtopData.student_name || idVal;
+          const email = `${idVal.toLowerCase()}@vitstudent.ac.in`;
+          const syncRes = await api.post('/auth/vtop_sync', { reg_no: idVal, name, email });
+          
+          onLogin({ ...syncRes.data, role: 'student', vtopData });
+          toast.success(`Welcome back, ${syncRes.data.name}!`);
+        } else {
+          toast.error(vtopRes.data.error || "VTOP Authentication failed");
+        }
+      }
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Authentication failed");
+      toast.dismiss();
+      toast.error(err.response?.data?.detail || err.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -951,7 +1266,7 @@ export default function App() {
           </nav>
 
           <main style={{ paddingBottom: '4rem' }}>
-            {user.role === 'admin' ? <AdminDashboard adminId={user.id} /> : <StudentPortal studentId={user.id} />}
+            {user.role === 'admin' ? <AdminDashboard adminId={user.id} /> : <StudentPortal studentId={user.id} initialVtopData={user.vtopData} />}
           </main>
         </div>
       )}
